@@ -46,6 +46,10 @@ parser.add_argument('--C', default=2, type=int,
                     help='Number of speakers')
 parser.add_argument('--norm_type', default='gLN', type=str,
                     choices=['gLN', 'cLN', 'BN'], help='Layer norm type')
+parser.add_argument('--causal', type=int, default=0,
+                    help='Causal (1) or noncausal(0) training')
+parser.add_argument('--mask_nonlinear', default='relu', type=str,
+                    choices=['relu', 'softmax'], help='non-linear to generate mask')
 # Training config
 parser.add_argument('--use_cuda', type=int, default=1,
                     help='Whether use GPU')
@@ -106,11 +110,12 @@ def main(args):
                                 shuffle=args.shuffle,
                                 num_workers=args.num_workers)
     cv_loader = AudioDataLoader(cv_dataset, batch_size=1,
-                                num_workers=args.num_workers)
+                                num_workers=0)
     data = {'tr_loader': tr_loader, 'cv_loader': cv_loader}
     # model
     model = ConvTasNet(args.N, args.L, args.B, args.H, args.P, args.X, args.R,
-                       args.C, norm_type=args.norm_type)
+                       args.C, norm_type=args.norm_type, causal=args.causal,
+                       mask_nonlinear=args.mask_nonlinear)
     print(model)
     if args.use_cuda:
         model = torch.nn.DataParallel(model)

@@ -4,17 +4,17 @@
 # Author: Kaituo XU
 
 # -- START IMPORTANT
-# Modify these path to your path
+# * If you have mixture wsj0 audio, modify `data` to your path that including tr, cv and tt.
+# * If you jsut have origin sphere format wsj0 , modify `wsj0_origin` to your path and
+# modify `wsj0_wav` to path that put output wav format wsj0, then read and run stage 1 part.
+# After that, modify `data` and run from stage 2.
 wsj0_origin=/home/ktxu/workspace/data/CSR-I-WSJ0-LDC93S6A
 wsj0_wav=/home/ktxu/workspace/data/wsj0-wav/wsj0
-# Directory of wsj0 including tr, cv and tt
 data=/home/ktxu/workspace/data/wsj-mix/2speakers/wav8k/min/
-
 stage=1  # Modify this to control to start from which stage
 # -- END
 
-ngpu=1
-dumpdir=data
+dumpdir=data  # directory to put generated json file
 
 # -- START Conv-TasNet Config
 train_dir=$dumpdir/tr
@@ -23,17 +23,19 @@ evaluate_dir=$dumpdir/tt
 separate_dir=$dumpdir/tt
 sample_rate=8000
 segment=4  # seconds
-cv_maxlen=8  # seconds
+cv_maxlen=6  # seconds
 # Network config
 N=256
-L=40
+L=20
 B=256
 H=512
 P=3
 X=8
 R=4
+norm_type=gLN
+causal=0
+mask_nonlinear='relu'
 C=2
-norm_type=BN
 # Training config
 use_cuda=1
 id=0
@@ -43,7 +45,7 @@ early_stop=0
 max_norm=5
 # minibatch
 shuffle=1
-batch_size=4
+batch_size=3
 num_workers=4
 # optimizer
 optimizer=adam
@@ -64,6 +66,8 @@ cal_sdr=1
 
 # exp tag
 tag="" # tag for managing experiments.
+
+ngpu=1  # always 1
 
 . utils/parse_options.sh || exit 1;
 . ./cmd.sh
@@ -96,7 +100,7 @@ fi
 
 
 if [ -z ${tag} ]; then
-  expdir=exp/train_r${sample_rate}_N${N}_L${L}_B${B}_H${H}_P${P}_X${X}_R${R}_C${C}_${norm_type}_epoch${epochs}_half${half_lr}_norm${max_norm}_bs${batch_size}_worker${num_workers}_${optimizer}_lr${lr}_mmt${momentum}_l2${l2}_`basename $train_dir`
+  expdir=exp/train_r${sample_rate}_N${N}_L${L}_B${B}_H${H}_P${P}_X${X}_R${R}_C${C}_${norm_type}_causal${causal}_${mask_nonlinear}_epoch${epochs}_half${half_lr}_norm${max_norm}_bs${batch_size}_worker${num_workers}_${optimizer}_lr${lr}_mmt${momentum}_l2${l2}_`basename $train_dir`
 else
   expdir=exp/train_${tag}
 fi
@@ -120,6 +124,8 @@ if [ $stage -le 2 ]; then
     --R $R \
     --C $C \
     --norm_type $norm_type \
+    --causal $causal \
+    --mask_nonlinear $mask_nonlinear \
     --use_cuda $use_cuda \
     --epochs $epochs \
     --half_lr $half_lr \
